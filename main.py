@@ -1,61 +1,77 @@
 import pandas as pd
 
-"""თქვენ გეძლევათ CSV ფაილი (student_scores_random_names.csv), რომელიც შეიცავს სტუდენტთა ქულებს სხვადასხვა საგნებსა და სემესტრებზე. თქვენი ამოცანაა გამოიყენოთ pandas ბიბლიოთეკა ამ მონაცემების გასაწმენდად და ანალიზისთვის.
+from statistics import IDataHandler, IFileWriter, IAnalyzer, DataHandler, ExcelFileWriter, Analyzer
+
+"""თქვენ გეძლევათ CSV ფაილი (student_scores_random_names.csv), რომელიც შეიცავს სტუდენტთა ქულებს სხვადასხვა საგნებსა და სემესტრებზე. 
+თქვენი ამოცანაა გამოიყენოთ pandas ბიბლიოთეკა ამ მონაცემების გასაწმენდად და ანალიზისთვის.
 
 
 csv ფაილი ჩატვირთენ პანდას დატაფრეიმში და ჩაატარეთ შემდეგი გამოთვლები:
 
-გამოიტანეთ იმ სტუდენტთა სია, რომლებმაც არ ჩააბარეს რომელიმე საგანი (ქულა ნაკლებია 50-ზე).
-თითოეული საგნისთვის გამოთვალეთ საშუალო ქულა თითო სემესტრში.
-იპოვეთ ის სტუდენტი(ები), რომელთაც აქვთ ყველაზე მაღალი საშუალო ქულა ყველა სემესტრსა და საგანში.
-იპოვეთ საგანი, რომელშიც სტუდენტებს ყველაზე მეტად გაუჭირდათ (ყველაზე დაბალი საშუალო ქულა ყველა სემესტრში).
-შექმენით ახალი დატაფრეიმი სადაც დააგენერირებთ საგნების საშუალო ქულებს სემესტრის მიხედვით და შემდეგ შეინახავთ ექსელის ფაილში (ინდექსები შეუსაბამეთ სემესტრებს)
+1. გამოიტანეთ იმ სტუდენტთა სია, რომლებმაც არ ჩააბარეს რომელიმე საგანი (ქულა ნაკლებია 50-ზე).
+2. თითოეული საგნისთვის გამოთვალეთ საშუალო ქულა თითო სემესტრში.
+3. იპოვეთ ის სტუდენტი(ები), რომელთაც აქვთ ყველაზე მაღალი საშუალო ქულა ყველა სემესტრსა და საგანში.
+4. იპოვეთ საგანი, რომელშიც სტუდენტებს ყველაზე მეტად გაუჭირდათ (ყველაზე დაბალი საშუალო ქულა ყველა სემესტრში).
+5. შექმენით ახალი დატაფრეიმი სადაც დააგენერირებთ საგნების საშუალო ქულებს სემესტრის მიხედვით და შემდეგ შეინახავთ ექსელის ფაილში (ინდექსები შეუსაბამეთ სემესტრებს)
 
 ბონუსი (არასავალდებულო):
-გამოავლინეთ სტუდენტები, რომლებმაც თანმიმდევრულად გააუმჯობესეს ქულები სემესტრებში.
+6. გამოავლინეთ სტუდენტები, რომლებმაც თანმიმდევრულად გააუმჯობესეს ქულები სემესტრებში.
 
 ვიზუალიზაცია:
 შექმენით სვეტების დიაგრამა, რომელიც აჩვენებს თითო საგნის საშუალო ქულას ყველა სემესტრში.
 შექმენით ხაზოვანი გრაფიკი, რომელიც აჩვენებს საშუალო საერთო ქულას სემესტრების მიხედვით."""
 
 
-def get_highest_averages(df):
-    result = {}
-    for subject in subject_columns:
-        max_scores = df.loc[df.groupby('Semester')[subject].idxmax()][['Student', 'Semester', subject]]
-        result[subject] = max_scores
-    final_result = pd.concat(result, axis=1)
-    return final_result
+class ReportGenerator:
+    """Generates reports by coordinating various components."""
+
+    def __init__(self, data_handler: IDataHandler, file_writer: IFileWriter, analyzer: IAnalyzer):
+        self.data_handler = data_handler
+        self.file_writer = file_writer
+        self.analyzer = analyzer
+
+    def generate_average_report(self, output_file: str):
+        data = self.data_handler.get_data()
+        avg_per_semester = self.analyzer.get_semester_averages(data)
+        self.file_writer.save(avg_per_semester, output_file)
+        print(avg_per_semester.to_string())
+
+    def generate_improvement_report(self):
+        data = self.data_handler.get_data()
+        improved_students = self.analyzer.get_improved_students(data)
+        print(improved_students)
+
+    def generate_failed_report(self):
+        data = self.data_handler.get_data()
+        failed_students = self.analyzer.get_failed_students(data)
+        print(failed_students)
+
+    def generate_highest_averages_report(self):
+        data = self.data_handler.get_data()
+        highest_averages = self.analyzer.get_highest_averages(data)
+        print(highest_averages)
+
+    def generate_hardest_subjects_report(self):
+        data = self.data_handler.get_data()
+        hardest_subjects = self.analyzer.get_hardest_subjects(data)
+        print(hardest_subjects.to_string())
 
 
-def get_hardest_subjects(df):
-    subject_columns = df.columns.difference(['Student', 'Semester'])
-    subject_averages = df.groupby('Semester')[subject_columns].mean()
-    lowest_averages = subject_averages.idxmin(axis=1)
-    lowest_avg_values = subject_averages.min(axis=1)
-    result = pd.DataFrame({
-        'Semester': lowest_averages.index,
-        'Subject': lowest_averages.values,
-        'Average Score': lowest_avg_values.values
-    })
-    return result
+def main():
+    data_handler = DataHandler(input_file='student_scores_random_names.csv')
+    file_writer = ExcelFileWriter()
+    analyzer = Analyzer()
+    report_generator = ReportGenerator(data_handler, file_writer, analyzer)
+
+    avg_output_file = 'average_semester_report.xlsx'
+    report_generator.generate_average_report(avg_output_file)
+    report_generator.generate_failed_report()
+    report_generator.generate_improvement_report()
+    report_generator.generate_highest_averages_report()
+    report_generator.generate_hardest_subjects_report()
 
 
-def get_improved_students(df):
-    df = df.sort_values(by=['Student', 'Semester'])
-    subject_columns = df.columns.difference(['Student', 'Semester'])
-    df['Improvement'] = df.groupby('Student')[subject_columns].diff().fillna(0).ge(0).all(axis=1)
-    students_with_improvement = df.groupby('Student').filter(lambda x: x['Improvement'].all())
-
-    return students_with_improvement[['Student', 'Semester'] + list(subject_columns)]
-
-
-df = pd.read_csv('student_scores_random_names.csv')
-subject_columns = df.columns.difference(['Student', 'Semester'])
-failed_students = df[df[subject_columns].lt(50).any(axis=1)]['Student']
-semester_averages = df.groupby('Semester')[subject_columns].mean()
-highest_averages = get_highest_averages(df)
-hardest_subjects = get_hardest_subjects(df)
-semester_averages.to_excel('subject_averages_per_semester.xlsx', index=True)
-improved_students = get_improved_students(df)
-print(improved_students)
+if __name__ == "__main__":
+    df = pd.read_csv('student_scores_random_names.csv')
+    print(df.head())
+    main()
