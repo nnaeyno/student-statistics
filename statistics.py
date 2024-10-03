@@ -6,10 +6,7 @@ from typing import List
 class DataCleaner:
     """Handles cleaning of student data."""
 
-    def __init__(self, data: pd.DataFrame):
-        self.data = data
-
-    def clean_data(self, method="fill_mean"):
+    def clean_data(self, data, method="fill_mean"):
         """
         Cleans the dataset by handling NaN values.
         :param method: The method to clean data. Options are:
@@ -22,21 +19,22 @@ class DataCleaner:
         :return: Cleaned DataFrame.
         """
         if method == "drop":
-            cleaned_data = self.data.dropna()
+            cleaned_data = data.dropna()
         elif method == "fill_zero":
-            cleaned_data = self.data.fillna(0)
+            cleaned_data = data.fillna(0)
         elif method == "fill_mean":
-            cleaned_data = self.data.fillna(self.data.mean(numeric_only=True))
+            cleaned_data = data.fillna(data.mean(numeric_only=True))
         elif method == "fill_median":
-            cleaned_data = self.data.fillna(self.data.median(numeric_only=True))
+            cleaned_data = data.fillna(data.median(numeric_only=True))
         elif method == "fill_ffill":
-            cleaned_data = self.data.fillna(method="ffill")
+            cleaned_data = data.fillna(method="ffill")
         elif method == "fill_bfill":
-            cleaned_data = self.data.fillna(method="bfill")
+            cleaned_data = data.fillna(method="bfill")
         else:
             raise ValueError(f"Unknown cleaning method: {method}")
 
         return cleaned_data
+
 
 class IDataHandler(ABC):
     """Interface for data handling."""
@@ -51,6 +49,10 @@ class IDataHandler(ABC):
 
     @abstractmethod
     def get_subjects(self) -> List[str]:
+        pass
+
+    @abstractmethod
+    def clean(self, method='drop'):
         pass
 
 
@@ -82,14 +84,19 @@ class IAnalyzer(ABC):
         pass
 
     @abstractmethod
-    def get_semester_averages(self, data):
+    def get_subject_semester_averages(self, data):
+        pass
+
+    @abstractmethod
+    def get_average_per_semester(self, data):
         pass
 
 
 class DataHandler(IDataHandler):
     """Handles data loading and subject extraction."""
 
-    def __init__(self, input_file: str = None):
+    def __init__(self, cleaner: DataCleaner, input_file: str = None):
+        self.cleaner = cleaner
         self.data = None
         if input_file is not None:
             self.load_data(input_file)
@@ -102,6 +109,9 @@ class DataHandler(IDataHandler):
 
     def get_subjects(self) -> List[str]:
         return self.data.columns.difference(['Student', 'Semester'])
+
+    def clean(self, method='drop'):
+        self.data = self.cleaner.clean_data(self.data, method)
 
 
 class ExcelFileWriter(IFileWriter):
@@ -120,22 +130,31 @@ class Analyzer(IAnalyzer):
         failed_students = data[data[subject_columns].lt(50).any(axis=1)]['Student']
         return failed_students.unique()
 
-    def get_semester_averages(self, data):
+    def get_subject_semester_averages(self, data):
         subject_columns = self.get_subjects(data)
         return data.groupby('Semester')[subject_columns].mean()
 
     def get_highest_averages(self, data):
         subject_columns = self.get_subjects(data)
-        result = {}
-
-        for subject in subject_columns:
-            max_scores_idx = data.groupby('Semester')[subject].idxmax()
-            max_scores = data.loc[max_scores_idx, ['Student', 'Semester', subject]].drop_duplicates()
-            result[subject] = max_scores
-        final_result = pd.concat(result, axis=1)
-        unique_students = pd.unique(final_result.xs('Student', axis=1, level=1).values.flatten())
-
-        return unique_students
+        average_grades = data.groupby(self.non_subjects)[subject_columns].mean().reset_index()
+        average_grades['Overall Average'] = average_grades[subject_columns].mean(axis=1)
+        average_grades = average_grades.groupby('Student')['Overall Average'].mean().reset_index()
+        return average_grades.max()
+        # max_overall_avg = average_grades.groupby('Semester')['Overall Average'].max().reset_index()
+        # result_per_semester = pd.merge(max_overall_avg, average_grades, on=['Semester', 'Overall Average'], how='inner')
+        # average_scores = data.groupby('Student').mean(numeric_only=True).reset_index()
+        #
+        # highest_scores = {}
+        #
+        # for subject in subject_columns:
+        #     max_score = average_scores[subject].max()
+        #     students_with_max = average_scores[average_scores[subject] == max_score]['Student'].unique()
+        #     highest_scores[subject] = {
+        #         'Max Score': max_score,
+        #         'Students': students_with_max
+        #     }
+        #
+        # return highest_scores.items(), result_per_semester
 
     def get_hardest_subjects(self, data):
         subject_columns = self.get_subjects(data)
@@ -150,18 +169,27 @@ class Analyzer(IAnalyzer):
         return result
 
     def get_improved_students(self, data):
-        df = data.sort_values(by=self.non_subjects)
-        subject_columns = self.get_subjects(data)
-        df['Improvement'] = df.groupby('Student')[subject_columns].diff().fillna(0).ge(0).all(axis=1)
-        students_with_improvement = df.groupby('Student').filter(lambda x: x['Improvement'].all())
+        subjects_column = self.get_subjects(data)
+        df = data.groupby(self.non_subjects)[subjects_column].sum().reset_index()
+        df['Total Score'] = df[subjects_column].sum(axis=1)
+        increasing = df['Total Score'].lt(df.groupby('Student')['Total Score'].shift(-1))
+        increase_group = increasing.groupby(df['Student'], group_keys=False).apply(lambda v: v.ne(v.shift(1))).cumsum()
+        consec_increases = increasing.groupby(increase_group).transform(lambda v: v.cumsum().max())
+        inds_per_group = (
+            increase_group[consec_increases >= 3]
+            .groupby(increase_group)
+            .apply(lambda g: list(g.index) + [max(g.index) + 1])
+        )
 
-        return students_with_improvement['Student'].unique()
+        out_df = pd.concat(df.loc[inds].assign(group=i) for i, inds in enumerate(inds_per_group))
+        return out_df['Student'].unique()
 
     def get_subjects(self, data):
         return data.columns.difference(self.non_subjects)
 
     def get_average_per_semester(self, data):
         subjects_column = self.get_subjects(data)
-        avg_per_semester = data.groupby('Semester')[subjects_column].mean(axis=1).mean(axis=1)
+        data['Semester Average'] = data[subjects_column].mean(axis=1)
+        semester_averages = data.groupby('Semester')['Semester Average'].mean()
 
-        return avg_per_semester
+        return semester_averages

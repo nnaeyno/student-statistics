@@ -1,6 +1,7 @@
 import pandas as pd
 
-from statistics import IDataHandler, IFileWriter, IAnalyzer, DataHandler, ExcelFileWriter, Analyzer
+from statistics import IDataHandler, IFileWriter, IAnalyzer, DataHandler, ExcelFileWriter, Analyzer, DataCleaner
+from visualizer import DataVisualizer
 
 """თქვენ გეძლევათ CSV ფაილი (student_scores_random_names.csv), რომელიც შეიცავს სტუდენტთა ქულებს სხვადასხვა საგნებსა და სემესტრებზე. 
 თქვენი ამოცანაა გამოიყენოთ pandas ბიბლიოთეკა ამ მონაცემების გასაწმენდად და ანალიზისთვის.
@@ -29,12 +30,17 @@ class ReportGenerator:
         self.data_handler = data_handler
         self.file_writer = file_writer
         self.analyzer = analyzer
+        self.visualizer = DataVisualizer()
 
-    def generate_average_report(self, output_file: str):
+        # if user wants to work on diff data, it has different options as well
+        # self.data_handler.clean()
+
+    def generate_subject_average_report(self, output_file: str):
         data = self.data_handler.get_data()
-        avg_per_semester = self.analyzer.get_semester_averages(data)
+        avg_per_semester = self.analyzer.get_subject_semester_averages(data)
         self.file_writer.save(avg_per_semester, output_file)
         print(avg_per_semester.to_string())
+        self.visualizer.plot_subject_averages_per_semester(avg_per_semester)
 
     def generate_improvement_report(self):
         data = self.data_handler.get_data()
@@ -49,29 +55,35 @@ class ReportGenerator:
     def generate_highest_averages_report(self):
         data = self.data_handler.get_data()
         highest_averages = self.analyzer.get_highest_averages(data)
-        print(highest_averages)
+        print(highest_averages.to_string())
 
     def generate_hardest_subjects_report(self):
         data = self.data_handler.get_data()
         hardest_subjects = self.analyzer.get_hardest_subjects(data)
         print(hardest_subjects.to_string())
 
+    def generate_semester_average_report(self):
+        data = self.data_handler.get_data()
+        semester_avg = self.analyzer.get_average_per_semester(data)
+        self.visualizer.plot_semester_averages(semester_avg)
+
 
 def main():
-    data_handler = DataHandler(input_file='student_scores_random_names.csv')
+    data_cleaner = DataCleaner()
+    data_handler = DataHandler(data_cleaner, input_file='student_scores_random_names.csv')
     file_writer = ExcelFileWriter()
     analyzer = Analyzer()
     report_generator = ReportGenerator(data_handler, file_writer, analyzer)
 
     avg_output_file = 'average_semester_report.xlsx'
-    report_generator.generate_average_report(avg_output_file)
+    report_generator.generate_subject_average_report(avg_output_file)
     report_generator.generate_failed_report()
     report_generator.generate_improvement_report()
     report_generator.generate_highest_averages_report()
     report_generator.generate_hardest_subjects_report()
+    report_generator.generate_semester_average_report()
 
 
 if __name__ == "__main__":
     df = pd.read_csv('student_scores_random_names.csv')
-    print(df.head())
     main()
