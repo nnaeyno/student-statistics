@@ -33,7 +33,10 @@ class ReportGenerator:
         self.visualizer = DataVisualizer()
 
         # if user wants to work on diff data, it has different options as well
-        # self.data_handler.clean()
+        # ბევრი ვარიანტია იმისი თუ როგორ უნდა გაიწმინდოს დატა და დამოკიდებულია ამოცანა როგორაა დასმული
+        # შესაბამისად სხვადასხვა ვარიანტების იმპლემენტაცია არის ფუნქციაში და თვითონ იუზერმა გადაწყვიტოს
+        # როგორ ურჩევნია და ზუსტად რისი მიღება უნდა ან NaN რას ნიშნავს ამოცანის ჭრილში
+        self.data_handler.clean()
 
     def generate_subject_average_report(self, output_file: str):
         data = self.data_handler.get_data()
@@ -85,5 +88,4 @@ def main():
 
 
 if __name__ == "__main__":
-    df = pd.read_csv('student_scores_random_names.csv')
     main()

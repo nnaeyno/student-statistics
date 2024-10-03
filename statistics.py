@@ -6,7 +6,7 @@ from typing import List
 class DataCleaner:
     """Handles cleaning of student data."""
 
-    def clean_data(self, data, method="fill_mean"):
+    def clean_data(self, data, method="drop"):
         """
         Cleans the dataset by handling NaN values.
         :param method: The method to clean data. Options are:
@@ -180,8 +180,10 @@ class Analyzer(IAnalyzer):
             .groupby(increase_group)
             .apply(lambda g: list(g.index) + [max(g.index) + 1])
         )
-
-        out_df = pd.concat(df.loc[inds].assign(group=i) for i, inds in enumerate(inds_per_group))
+        try:
+            out_df = pd.concat(df.loc[inds].assign(group=i) for i, inds in enumerate(inds_per_group))
+        except:
+            out_df = df.assign(group=0)
         return out_df['Student'].unique()
 
     def get_subjects(self, data):
