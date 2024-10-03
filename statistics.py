@@ -180,9 +180,9 @@ class Analyzer(IAnalyzer):
             .groupby(increase_group)
             .apply(lambda g: list(g.index) + [max(g.index) + 1])
         )
-        try:
+        if len(inds_per_group):
             out_df = pd.concat(df.loc[inds].assign(group=i) for i, inds in enumerate(inds_per_group))
-        except:
+        else:
             out_df = df.assign(group=0)
         return out_df['Student'].unique()
 
