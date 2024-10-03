@@ -36,33 +36,38 @@ class ReportGenerator:
         # ბევრი ვარიანტია იმისი თუ როგორ უნდა გაიწმინდოს დატა და დამოკიდებულია ამოცანა როგორაა დასმული
         # შესაბამისად სხვადასხვა ვარიანტების იმპლემენტაცია არის ფუნქციაში და თვითონ იუზერმა გადაწყვიტოს
         # როგორ ურჩევნია და ზუსტად რისი მიღება უნდა ან NaN რას ნიშნავს ამოცანის ჭრილში
-        self.data_handler.clean()
+        # self.data_handler.clean()
 
     def generate_subject_average_report(self, output_file: str):
         data = self.data_handler.get_data()
         avg_per_semester = self.analyzer.get_subject_semester_averages(data)
         self.file_writer.save(avg_per_semester, output_file)
+        print("SUBJECT AVERAGES")
         print(avg_per_semester.to_string())
         self.visualizer.plot_subject_averages_per_semester(avg_per_semester)
 
     def generate_improvement_report(self):
         data = self.data_handler.get_data()
         improved_students = self.analyzer.get_improved_students(data)
+        print("IMPROVED STUDENTS")
         print(improved_students)
 
     def generate_failed_report(self):
         data = self.data_handler.get_data()
         failed_students = self.analyzer.get_failed_students(data)
+        print("FAILED STUDENTS")
         print(failed_students)
 
     def generate_highest_averages_report(self):
         data = self.data_handler.get_data()
         highest_averages = self.analyzer.get_highest_averages(data)
+        print("HIGHEST AVERAGES")
         print(highest_averages.to_string())
 
     def generate_hardest_subjects_report(self):
         data = self.data_handler.get_data()
         hardest_subjects = self.analyzer.get_hardest_subjects(data)
+        print("HARDEST SUBJECTS")
         print(hardest_subjects.to_string())
 
     def generate_semester_average_report(self):
